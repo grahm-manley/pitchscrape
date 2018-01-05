@@ -16,7 +16,17 @@ def get_unsaved_reviews():
 			response = requests.get(review_url, headers=headers)
 			review_html = response.content
 			soup = BeautifulSoup(review_html, 'html.parser')
-			yield Review(review_html)
+			multiple_albums = soup.find(
+				'div', 
+				{'class':'multi-tombstone-widget'})	
+			if(multiple_albums == None):
+				yield Review(review_html)
+			else:
+				review_tags = soup.find_all(
+					'div', 
+					{'class':'single-album-tombstone'})
+				for review in review_tags:
+					yield Review(str(review))
 			
 
 def _get_review_group_pages():
