@@ -82,14 +82,3 @@ def _get_review_urls(page):
 		else:
 			raise StopIteration	
 
-'''
-def _get_most_recent_review_on_page(page):
-	time_tag = page.find('time')	
-	datetime_str = time_tag['datetime']
-	datetime_obj = datetime.strptime(datetime_str, DATE_FORMAT)
-	return datetime_obj
-def _get_url_soup(url):
-	response = requests.get(url, headers=headers)
-	soup = BeautifulSoup(response.content, 'html.parser')
-	return soup 
-'''
