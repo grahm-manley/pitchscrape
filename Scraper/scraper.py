@@ -36,7 +36,7 @@ class Scraper:
 					'div', 
 					{'class':'multi-tombstone-widget'})	
 				if(self.multiple_albums == None): # If one album
-					yield Review(self.review_html)
+					yield Review(self.review_html, review_url)
 				else: 
 					# Get individual albums
 					self.review_tags = self.soup.find_all(
@@ -47,8 +47,7 @@ class Scraper:
 						)
 					# Make review object from individual tag
 					for review in self.review_tags:
-						yield Review(str(review))
-			
+						yield Review(str(review), review_url)
 
 	def _get_review_group_pages(self):
 		""" 

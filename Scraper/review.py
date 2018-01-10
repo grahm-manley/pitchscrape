@@ -2,8 +2,9 @@ from bs4 import BeautifulSoup
 
 class Review(object):
 
-	def __init__(self, html):
+	def __init__(self, html, url):
 		self.html = html
+		self.url = url
 		self.soup = BeautifulSoup(html, 'html.parser')
 		
 		self._set_album_title()
