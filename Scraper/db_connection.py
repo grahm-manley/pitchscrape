@@ -1,6 +1,7 @@
 import MySQLdb
 import config
 import datetime
+import warnings
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -70,6 +71,8 @@ class DbConnection:
 
 	def _create_tables(self):
 		#TODO: Handle warnings with try catch
+		#warnings.filterwarnings("ignore", "1050, \"Table * already exists")
+			
 		# Create review table
 		self.sql = """
 			CREATE TABLE IF NOT EXISTS review(
@@ -93,7 +96,7 @@ class DbConnection:
 		        );
 	       		"""
 		self.cur.execute(self.sql)
-
+		
 		# Create updated table
 		self.sql = """
 			CREATE TABLE IF NOT EXISTS updated(
@@ -103,6 +106,9 @@ class DbConnection:
 
 			"""
 		self.cur.execute(self.sql)
+		
+		# Check if updated table has any values
+		
 
 		self.db.commit() 
 
