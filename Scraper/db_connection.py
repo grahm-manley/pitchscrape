@@ -52,8 +52,10 @@ class DbConnection:
 
 		self.sql = "SELECT updated FROM updated ORDER BY updated DESC;"
 		self.cur.execute(self.sql)
-		self.last_update_time = self.cur.fetchone()
-		return self.last_update_time
+		if(self.cur.rowcount == 0):
+			return datetime.datetime(1900, 1, 1)
+		else: 
+			return self.cur.fetchone()[0]
 	
 	def close(self):
 		""" 
@@ -107,14 +109,10 @@ class DbConnection:
 			"""
 		self.cur.execute(self.sql)
 		
-		# Check if updated table has any values
-		
-
 		self.db.commit() 
 
 		
 	def __enter__(self):
-		self.__init__()
 		return self
 	
 	def __exit__(self, exc_type, exc_value, traceback):
