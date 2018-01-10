@@ -1,9 +1,8 @@
 import sys
 sys.path.append('..')
-import Scraper 
-#from bs4 import BeautifulSoup
+import scraper 
 from unittest.mock import patch
-
+from datetime import datetime
 class response_mock:
 	def __init__(self, html):
 		self.content = html
@@ -25,11 +24,12 @@ def req_mock(url, headers):
 
 @patch('requests.get', new = req_mock)
 def test_get_unsaved_reviews():
+	scrape = scraper.Scraper(datetime(2018, 1, 3))
 	file = open('correct/scraper1.txt')
 	correct_results = file.read()
 	file.close()
 	test_results = ''
-	for review in Scraper.get_unsaved_reviews():
+	for review in scrape.get_unsaved_reviews():
 		test_results += (str(review.artists) + '\n')
 		test_results += (review.album_title + '\n')
 		test_results += (review.score + '\n')
