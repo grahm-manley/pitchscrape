@@ -30,6 +30,7 @@ def test_get_unsaved_reviews():
 	file.close()
 	test_results = ''
 	for review in scrape.get_unsaved_reviews():
+		print(review.album_title)
 		test_results += (str(review.artists) + '\n')
 		test_results += (review.album_title + '\n')
 		test_results += (review.score + '\n')

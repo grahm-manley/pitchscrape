@@ -14,7 +14,11 @@ class DbConnection:
 				passwd=config.DB_CONFIG['passwd'],
 				db=config.DB_CONFIG['db']
 				)
+		self.db.set_character_set('utf8')
 		self.cur = self.db.cursor()
+		self.cur.execute('SET NAMES utf8;')
+		self.cur.execute('SET CHARACTER SET utf8;')
+		self.cur.execute('SET character_set_connection=utf8;')
 
 		self._create_tables()
 	
@@ -22,7 +26,23 @@ class DbConnection:
 	def save_review(self, review):
 		"""
 		Given a review, save it to the database.
+		Return True if it was successfully inserted
 		"""
+
+		# Check if record already exists
+		self.sql = """
+			SELECT * FROM review r, artist a
+			WHERE r.id = a.review_id
+			AND r.album_title = '%s'
+			AND a.artist = '%s'
+			""" % (review.album_title, review.artists[0])
+		self.cur.execute(self.sql)
+		if(self.cur.rowcount != 0):
+			print(("Warning: Review '{}' by '{}'" +  
+			" already \n exists in DB and was not resaved").format(
+				review.album_title, review.artists))
+			return False
+
 		# Insert review album title, score, and URL
 		self.sql = """
 			INSERT INTO review (album_title, score, url) 
@@ -44,6 +64,7 @@ class DbConnection:
 			self.cur.execute(self.sql)
 
 		self.db.commit()
+		return True
 
 	def get_last_update_time(self):
 		""" 
@@ -72,9 +93,11 @@ class DbConnection:
 		self.db.close()
 
 	def _create_tables(self):
-		#TODO: Handle warnings with try catch
-		#warnings.filterwarnings("ignore", "1050, \"Table * already exists")
-			
+
+		# Hide 'table already exists' warning
+		self.sql = 'SET sql_notes = 0;'
+		self.cur.execute(self.sql)
+
 		# Create review table
 		self.sql = """
 			CREATE TABLE IF NOT EXISTS review(
@@ -109,6 +132,10 @@ class DbConnection:
 			"""
 		self.cur.execute(self.sql)
 		
+		# Re-enable warnings
+		self.sql = 'SET sql_notes = 1;'
+		self.cur.execute(self.sql)
+
 		self.db.commit() 
 
 		
