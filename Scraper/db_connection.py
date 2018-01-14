@@ -2,12 +2,14 @@ import MySQLdb
 import config
 import datetime
 import warnings
+import logging
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 class DbConnection:
 
 	def __init__(self):
+		self.logger = logging.getLogger(__name__)
 		self.db = MySQLdb.connect(
 				host=config.DB_CONFIG['host'],
 				user=config.DB_CONFIG['user'],
@@ -38,7 +40,7 @@ class DbConnection:
 			""" % (review.album_title, review.artists[0])
 		self.cur.execute(self.sql)
 		if(self.cur.rowcount != 0):
-			print(("Warning: Review '{}' by '{}'" +  
+			self.logger.warning(("Warning: Review '{}' by '{}'" +  
 			" already \n exists in DB and was not resaved").format(
 				review.album_title, review.artists))
 			return False
