@@ -14,7 +14,7 @@ class Scraper:
 	def __init__(self, last_ran):
 		self.last_ran = last_ran
 
-	def get_unsaved_reviews(self):
+	def get_unsaved_reviews(self, start_page=1):
 		"""
 		Retrieve the reviews that have been added to pitchfork since 
 		the program was last ran. The function is a generator to allow 
@@ -23,7 +23,7 @@ class Scraper:
 		is found without keeping it in memory.
 
 		"""
-		for group_page in self._get_review_group_pages():
+		for group_page in self._get_review_group_pages(start_page=start_page):
 			for review_url in self._get_review_urls(group_page):
 				self.response = requests.get(
 					review_url, headers=headers)
@@ -49,7 +49,7 @@ class Scraper:
 					for review in self.review_tags:
 						yield Review(str(review), review_url)
 
-	def _get_review_group_pages(self):
+	def _get_review_group_pages(self, start_page=1):
 		""" 
 		This function goes through the pages starting at 
 		https://pitchfork.com/reviews/albums/?page=1 and iteratively 
@@ -58,7 +58,7 @@ class Scraper:
 		"""
 		self.review_url_base = BASE_URL + '/reviews/albums/?page='	
 
-		for page_number in count(start=1): 	# Loop 1 -> inf
+		for page_number in count(start=start_page):# Loop start_page -> inf
 			self.reviews_url = self.review_url_base + str(page_number)
 			self.response = requests.get(self.reviews_url, 
 							headers=headers)
