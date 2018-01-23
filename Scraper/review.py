@@ -18,7 +18,9 @@ class Review(object):
 		self.album_title = self.album_title_tag.text
 
 	def _set_artists(self):
-		self.artists_tag = self.soup.find('ul', {'class':'artist-links artist-list single-album-tombstone__artist-links'})
+		self.artists_tag = self.soup.find('ul', 
+			{'class':
+			'artist-links artist-list single-album-tombstone__artist-links'})
 		self.artist_tag_list = self.artists_tag.find_all('a')
 		self.artists = [artist.text for artist in self.artist_tag_list]
 

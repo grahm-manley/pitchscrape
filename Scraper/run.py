@@ -10,6 +10,8 @@ from logging_config import logging_config
 dictConfig(logging_config)
 logger = logging.getLogger()
 
+logger.info("SCRAPE STARTED @ {}".format(datetime.now()))
+
 fails = []
 
 with DbConnection() as db:

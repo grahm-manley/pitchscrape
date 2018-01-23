@@ -30,40 +30,36 @@ class DbConnection:
 		Given a review, save it to the database.
 		Return True if it was successfully inserted
 		"""
-		# Deal with character's not accepted by MySQL
-		self.artists = [
-			artist.replace("'", "''")#.decode('utf-8','ignore') 
-			for artist in review.artists]
-		self.album_title = review.album_title.replace("'", "''")
-		self.album_title = self.album_title#.decode('utf-8', 'ignore')
-
+		
 		# Check if record already exists
-		if(len(self.artists) != 0): # Check if review has artists
+		if(len(review.artists) != 0): # Check if review has artists
 			self.sql = """
 				SELECT * FROM review r, artist a
 				WHERE r.id = a.review_id
-				AND r.album_title = '%s'
-				AND a.artist = '%s'
-				""" % (self.album_title, self.artists[0])
+				AND r.album_title = %s
+				AND a.artist = %s;
+				"""
+			self.cur.execute(self.sql, [review.album_title, review.artists[0]])
 		else:
 			self.sql = """
 				SELECT * FROM review r 
-				WHERE r.album_title = %s 
-				""" % (self.album_title)
-		self.cur.execute(self.sql)
+				WHERE r.album_title = %s; 
+				"""
+			self.cur.execute(self.sql, [review.album_title])
 		
 		if(self.cur.rowcount != 0):
 			self.logger.warning(("Warning: Review '{}' by '{}'" +  
 			" already \n exists in DB and was not resaved").format(
-				self.album_title, self.artists))
+				review.album_title, review.artists))
 			return False
 
 		# Insert review album title, score, and URL
 		self.sql = """
 			INSERT INTO review (album_title, score, url) 
-			VALUES ('%s', '%s', '%s'); 			
-			""" % (self.album_title, review.score, review.url)
-		self.cur.execute(self.sql)
+			VALUES (%s, %s, %s); 			
+			"""
+		self.cur.execute(self.sql, [review.album_title, 
+			review.score, review.url])
 
 		# Get review ID
 		self.sql = "SELECT id FROM review ORDER BY id DESC;"
@@ -71,12 +67,12 @@ class DbConnection:
 		self.album_id = self.cur.fetchone()[0]
 
 		# Insert artists into artist table
-		for artist in self.artists:
+		for artist in review.artists:
 			self.sql = """
 				INSERT INTO artist (review_id, artist)
-				VALUES ('%d', '%s');
-				""" % (self.album_id, artist)
-			self.cur.execute(self.sql)
+				VALUES (%s, %s);
+				"""
+			self.cur.execute(self.sql, [self.album_id, artist])
 
 		self.db.commit()
 		return True
@@ -151,7 +147,6 @@ class DbConnection:
 		self.sql = 'SET sql_notes = 1;'
 		self.cur.execute(self.sql)
 	
-		# 
 		self.sql = """
 			ALTER DATABASE %s CHARACTER SET UTF8 
 			COLLATE utf8_general_ci; 
