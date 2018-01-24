@@ -3,6 +3,8 @@ import requests
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from review import Review
+import logging
+
 
 headers = {'User-Agent':'Mozilla/5.0'}
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
@@ -12,6 +14,8 @@ LAST_RAN = datetime.today() - timedelta(days=5)
 
 class Scraper:
 	def __init__(self, last_ran):
+		self.logger = logging.getLogger(__name__)
+
 		self.last_ran = last_ran
 
 	def get_unsaved_reviews(self, start_page=1):
@@ -25,8 +29,10 @@ class Scraper:
 		"""
 		for group_page in self._get_review_group_pages(start_page=start_page):
 			for review_url in self._get_review_urls(group_page):
-				self.response = requests.get(
-					review_url, headers=headers)
+				#self.response = requests.get(
+				#	review_url, headers=headers)
+				self.response = self._get_response(review_url)
+
 				self.review_html = self.response.content
 				self.soup = BeautifulSoup(self.review_html, 
 							'html.parser')
@@ -60,8 +66,9 @@ class Scraper:
 
 		for page_number in count(start=start_page):# Loop start_page -> inf
 			self.reviews_url = self.review_url_base + str(page_number)
-			self.response = requests.get(self.reviews_url, 
-							headers=headers)
+			#self.response = requests.get(self.reviews_url, 
+			#				headers=headers)
+			self.response = self._get_response(self.reviews_url)
 			self.page = BeautifulSoup(
 				self.response.content, 'html.parser')
 		
@@ -98,3 +105,24 @@ class Scraper:
 			else:
 				raise StopIteration	
 
+	def _get_response(self, url):
+		try:
+			self.response = requests.get(
+				url, headers=headers)
+		except requests.exceptions.RequestException:
+			logger.info(requests.exceptions.RequestException)
+			logger.info("URL request exception caught, retrying")
+			retry = "Y"
+			success = False
+			while( (retry in ['y', 'Y']) and not success):
+				try:
+					self.response = requests.get(review_url, 
+						headers=headers)
+					retry = 'n'
+					success = True
+
+				except requests.exceptions.RequestException:
+					logger.info("URL request retry failed")
+					retry = input("Retry the request? (Y/N):")	
+					continue
+		return self.response
