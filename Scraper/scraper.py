@@ -27,6 +27,8 @@ class Scraper:
 		is found without keeping it in memory.
 
 		"""
+		self.review_fail_log = "Review @ '{}' unable to be created, skipping"
+
 		for group_page in self._get_review_group_pages(start_page=start_page):
 			for review_url in self._get_review_urls(group_page):
 				#self.response = requests.get(
@@ -42,7 +44,14 @@ class Scraper:
 					'div', 
 					{'class':'multi-tombstone-widget'})	
 				if(self.multiple_albums == None): # If one album
-					yield Review(self.review_html, review_url)
+					try:
+						yield Review(self.review_html,
+							review_url)
+					except AttributeError:
+						logger.error(
+							self.review_fail_log.format(
+							review_url))
+						continue
 				else: 
 					# Get individual albums
 					self.review_tags = self.soup.find_all(
@@ -53,7 +62,14 @@ class Scraper:
 						)
 					# Make review object from individual tag
 					for review in self.review_tags:
-						yield Review(str(review), review_url)
+						try:
+							yield Review(
+								str(review), 
+								review_url)
+						except AttributeError:
+							logger.error(self.review_fail_log.format(
+								review_url))
+							continue
 
 	def _get_review_group_pages(self, start_page=1):
 		""" 

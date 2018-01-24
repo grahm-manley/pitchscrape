@@ -1,15 +1,23 @@
 from bs4 import BeautifulSoup 
+import logging
 
 class Review(object):
 
 	def __init__(self, html, url):
+		self.logger = logging.getLogger(__name__)
+
 		self.html = html
 		self.url = url
 		self.soup = BeautifulSoup(self.html, 'html.parser')
-		
-		self._set_album_title()
-		self._set_artists()
-		self._set_score()
+	
+		try:
+			self._set_album_title()
+			self._set_artists()
+			self._set_score()
+		except AttributeError as e:
+			self.logger.error("Attribute Error in review init:")
+			self.logger.error(e)
+			raise AttributeError	
 
 	def _set_album_title(self):
 		self.album_title_tag = self.soup.find('h1',

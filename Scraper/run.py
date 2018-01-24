@@ -5,6 +5,7 @@ from datetime import datetime
 import logging
 from logging.config import dictConfig
 from logging_config import logging_config
+import sys
 
 # Set up logger
 dictConfig(logging_config)
@@ -17,7 +18,10 @@ fails = []
 with DbConnection() as db:
 	scrape = Scraper(db.get_last_update_time())
 	saved_reviews = 0
-	for review in scrape.get_unsaved_reviews():
+	start_page = 1
+	if(len(sys.argv) > 1):
+		start_page = int(sys.argv[1])	
+	for review in scrape.get_unsaved_reviews(start_page = start_page):
 		logger.info('Scraped: ' +  review.album_title + 
 			' by ' + str(review.artists))
 		try:
