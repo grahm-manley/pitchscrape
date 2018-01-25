@@ -48,7 +48,7 @@ class Scraper:
 						yield Review(self.review_html,
 							review_url)
 					except AttributeError:
-						logger.error(
+						self.logger.error(
 							self.review_fail_log.format(
 							review_url))
 						continue
@@ -67,7 +67,7 @@ class Scraper:
 								str(review), 
 								review_url)
 						except AttributeError:
-							logger.error(self.review_fail_log.format(
+							self.logger.error(self.review_fail_log.format(
 								review_url))
 							continue
 
@@ -125,9 +125,9 @@ class Scraper:
 		try:
 			self.response = requests.get(
 				url, headers=headers)
-		except requests.exceptions.RequestException:
-			logger.info(requests.exceptions.RequestException)
-			logger.info("URL request exception caught, retrying")
+		except requests.exceptions.RequestException as e:
+			self.logger.error(e)
+			self.logger.info("URL request exception caught, retrying")
 			retry = "Y"
 			success = False
 			while( (retry in ['y', 'Y']) and not success):
@@ -138,7 +138,7 @@ class Scraper:
 					success = True
 
 				except requests.exceptions.RequestException:
-					logger.info("URL request retry failed")
+					self.logger.info("URL request retry failed")
 					retry = input("Retry the request? (Y/N):")	
 					continue
 		return self.response
