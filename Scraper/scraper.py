@@ -92,11 +92,9 @@ class Scraper:
 			# Find most recent review on page
 			self.time_tag = self.page.find('time')
 			if(self.time_tag == None):
-				self.logger.warn(""" 
-					Unable to find date on page, 
-					testing date on per 
-					review basis for page '{}'
-					""".format(self.review_url))
+				self.logger.warn("Unable to find date on page," \
+				+ "testing date on per review basis for" \
+				+ "page '{}'".format(self.reviews_url))
 				yield self.page	
 			else:
 				
