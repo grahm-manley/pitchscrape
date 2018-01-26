@@ -81,6 +81,7 @@ class Scraper:
 		self.review_url_base = BASE_URL + '/reviews/albums/?page='	
 
 		for page_number in count(start=start_page):# Loop start_page -> inf
+			self.logger.info("Page {} being scraped".format(page_number))
 			self.reviews_url = self.review_url_base + str(page_number)
 			#self.response = requests.get(self.reviews_url, 
 			#				headers=headers)
@@ -90,13 +91,23 @@ class Scraper:
 		
 			# Find most recent review on page
 			self.time_tag = self.page.find('time')
-			self.datetime_str = self.time_tag['datetime']
-			self.datetime_obj = datetime.strptime(self.datetime_str, 
-							DATE_FORMAT)
-			if(self.last_ran < self.datetime_obj):
-				yield self.page 
+			if(self.time_tag == None):
+				self.logger.warn(""" 
+					Unable to find date on page, 
+					testing date on per 
+					review basis for page '{}'
+					""".format(self.review_url))
+				yield self.page	
 			else:
-				raise StopIteration	
+				
+				self.datetime_str = self.time_tag['datetime']
+				self.datetime_obj = datetime.strptime(
+							self.datetime_str, 
+							DATE_FORMAT)
+				if(self.last_ran < self.datetime_obj):
+					yield self.page 
+				else:
+					raise StopIteration	
 
 	def _get_review_urls(self, page):
 		"""
