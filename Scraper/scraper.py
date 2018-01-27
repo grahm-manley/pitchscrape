@@ -141,13 +141,13 @@ class Scraper:
 			success = False
 			while( (retry in ['y', 'Y']) and not success):
 				try:
-					self.response = requests.get(review_url, 
+					self.response = requests.get(url, 
 						headers=headers)
 					retry = 'n'
 					success = True
 
 				except requests.exceptions.RequestException:
 					self.logger.info("URL request retry failed")
-					retry = input("Retry the request? (Y/N):")	
+					retry = input("Retry the request again? (Y/N):")	
 					continue
 		return self.response
