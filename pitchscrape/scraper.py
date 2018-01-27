@@ -1,153 +1,176 @@
 from itertools import count
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 from bs4 import BeautifulSoup
 from review import Review
 import logging
-
+import sys
 
 headers = {'User-Agent':'Mozilla/5.0'}
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 BASE_URL = 'https://pitchfork.com' 
-# LAST_RAN date is a placeholder until it is setup to pull the date from the DB
-LAST_RAN = datetime.today() - timedelta(days=5)
 
-class Scraper:
-	def __init__(self, last_ran):
-		self.logger = logging.getLogger(__name__)
+# Set up logger
+dictConfig(logging_config)
+logger = logging.getLogger()
 
-		self.last_ran = last_ran
+def scrape():
+	logger.info("SCRAPE STARTED @ {}".format(datetime.now()))
+	fails = []
+	with DbConnection() as db:
+		scrape = Scraper(db.get_last_update_time())
+		saved_reviews = 0
+		start_page = 1
+		if(len(sys.argv) > 1):
+			start_page = int(sys.argv[1])	
+		for review in scrape.get_unsaved_reviews(start_page = start_page):
+			logger.info('Scraped: ' +  review.album_title + 
+				' by ' + str(review.artists))
+			try:
+				if(db.save_review(review)):
+					saved_reviews = saved_reviews + 1
+			except Exception as e:
+				logger.error('Failed to save : ' + review.album_title)
+				logger.error(e)
+				fails.append((review.album_title, review.artists))
+				
+			time.sleep(1) # For lessening the load on pitchfork's servers
+	logger.info("SCRAPE COMPLETED @ {}: Saved {} reviews with {} errors".format(
+		datetime.now(), saved_reviews, len(fails))) 
 
-	def get_unsaved_reviews(self, start_page=1):
-		"""
-		Retrieve the reviews that have been added to pitchfork since 
-		the program was last ran. The function is a generator to allow 
-		for separation between the class dealing with the database and
-		the scraper. This allows us to save each review to the db as it
-		is found without keeping it in memory.
+	if(len(fails) > 0):
+		logger.info("Fails: " + str(fails))
 
-		"""
-		self.review_fail_log = "Review @ '{}' unable to be created, skipping"
+	
+def get_unsaved_reviews(start_page=1):
+	"""
+	Retrieve the reviews that have been added to pitchfork since 
+	the program was last ran. The function is a generator to allow 
+	for separation between the class dealing with the database and
+	the scraper. This allows us to save each review to the db as it
+	is found without keeping it in memory.
 
-		for group_page in self._get_review_group_pages(start_page=start_page):
-			for review_url in self._get_review_urls(group_page):
-				#self.response = requests.get(
-				#	review_url, headers=headers)
-				self.response = self._get_response(review_url)
+	"""
+	review_fail_log = "Review @ '{}' unable to be created, skipping"
 
-				self.review_html = self.response.content
-				self.soup = BeautifulSoup(self.review_html, 
-							'html.parser')
+	for group_page in _get_review_group_pages(start_page=start_page):
+		for review_url in _get_review_urls(group_page):
+			#self.response = requests.get(
+			#	review_url, headers=headers)
+			response = _get_response(review_url)
 
-				# Find div for multiple albums if it exists 
-				self.multiple_albums = self.soup.find(
-					'div', 
-					{'class':'multi-tombstone-widget'})	
-				if(self.multiple_albums == None): # If one album
+			review_html = response.content
+			soup = BeautifulSoup(review_html, 
+						'html.parser')
+
+			# Find div for multiple albums if it exists 
+			multiple_albums = soup.find(
+				'div', 
+				{'class':'multi-tombstone-widget'})	
+			if(multiple_albums == None): # If one album
+				try:
+					yield Review(review_html, review_url)
+				except AttributeError:
+					logger.error(
+						review_fail_log.format(
+						review_url))
+					continue
+			else: 
+				# Get individual albums
+				review_tags = soup.find_all(
+					'div', {
+						'class':
+						'single-album-tombstone'
+						}
+					)
+				# Make review object from individual tag
+				for review in review_tags:
 					try:
-						yield Review(self.review_html,
+						yield Review(
+							str(review), 
 							review_url)
 					except AttributeError:
-						self.logger.error(
-							self.review_fail_log.format(
+						logger.error(review_fail_log.format(
 							review_url))
 						continue
-				else: 
-					# Get individual albums
-					self.review_tags = self.soup.find_all(
-						'div', {
-							'class':
-							'single-album-tombstone'
-							}
-						)
-					# Make review object from individual tag
-					for review in self.review_tags:
-						try:
-							yield Review(
-								str(review), 
-								review_url)
-						except AttributeError:
-							self.logger.error(self.review_fail_log.format(
-								review_url))
-							continue
 
-	def _get_review_group_pages(self, start_page=1):
-		""" 
-		This function goes through the pages starting at 
-		https://pitchfork.com/reviews/albums/?page=1 and iteratively 
-		returns the soup object of pages that contain unprocessed 
-		reviews. 
-		"""
-		self.review_url_base = BASE_URL + '/reviews/albums/?page='	
+def _get_review_group_pages(start_page=1):
+	""" 
+	This function goes through the pages starting at 
+	https://pitchfork.com/reviews/albums/?page=1 and iteratively 
+	returns the soup object of pages that contain unprocessed 
+	reviews. 
+	"""
+	review_url_base = BASE_URL + '/reviews/albums/?page='	
 
-		for page_number in count(start=start_page):# Loop start_page -> inf
-			self.logger.info("Page {} being scraped".format(page_number))
-			self.reviews_url = self.review_url_base + str(page_number)
-			#self.response = requests.get(self.reviews_url, 
-			#				headers=headers)
-			self.response = self._get_response(self.reviews_url)
-			self.page = BeautifulSoup(
-				self.response.content, 'html.parser')
-		
-			# Find most recent review on page
-			self.time_tag = self.page.find('time')
-			if(self.time_tag == None):
-				self.logger.warn("Unable to find date on page," \
-				+ "testing date on per review basis for" \
-				+ "page '{}'".format(self.reviews_url))
-				yield self.page	
-			else:
-				
-				self.datetime_str = self.time_tag['datetime']
-				self.datetime_obj = datetime.strptime(
-							self.datetime_str, 
-							DATE_FORMAT)
-				if(self.last_ran < self.datetime_obj):
-					yield self.page 
-				else:
-					raise StopIteration	
-
-	def _get_review_urls(self, page):
-		"""
-		Given a soup object of a page containing a list of reviews, 
-		for example the html on: 
-		https://pitchfork.com/reviews/albums/?page=1, iteratively 
-		return the url of the reviews on that page that have been
-		posted since the last time the script was run.
-		"""
-
-		self.reviews = page.find_all("div", {"class": "review"})
-		for review in self.reviews :
-			self.review_dttm_str = review.time['datetime']
-			self.review_dttm_obj = datetime.strptime(
-							self.review_dttm_str,
-							DATE_FORMAT) 
-			if(self.review_dttm_obj > self.last_ran) :
-				self.url_tag = review.find(('a', 
-						{'class':'album-link'}))
-				self.url = BASE_URL + self.url_tag['href']
-				yield self.url		
+	for page_number in count(start=start_page):# Loop start_page -> inf
+		logger.info("Page {} being scraped".format(page_number))
+		reviews_url = review_url_base + str(page_number)
+		#self.response = requests.get(self.reviews_url, 
+		#				headers=headers)
+		response = _get_response(reviews_url)
+		page = BeautifulSoup(
+			response.content, 'html.parser')
+	
+		# Find most recent review on page
+		time_tag = page.find('time')
+		if(time_tag == None):
+			logger.warn("Unable to find date on page," \
+			+ "testing date on per review basis for" \
+			+ "page '{}'".format(reviews_url))
+			yield page	
+		else:
+			
+			datetime_str = time_tag['datetime']
+			datetime_obj = datetime.strptime(
+						datetime_str, 
+						DATE_FORMAT)
+			if(last_ran < datetime_obj):
+				yield page 
 			else:
 				raise StopIteration	
 
-	def _get_response(self, url):
-		try:
-			self.response = requests.get(
-				url, headers=headers)
-		except requests.exceptions.RequestException as e:
-			self.logger.error(e)
-			self.logger.info("URL request exception caught, retrying")
-			retry = "Y"
-			success = False
-			while( (retry in ['y', 'Y']) and not success):
-				try:
-					self.response = requests.get(url, 
-						headers=headers)
-					retry = 'n'
-					success = True
+def _get_review_urls(page):
+	"""
+	Given a soup object of a page containing a list of reviews, 
+	for example the html on: 
+	https://pitchfork.com/reviews/albums/?page=1, iteratively 
+	return the url of the reviews on that page that have been
+	posted since the last time the script was run.
+	"""
 
-				except requests.exceptions.RequestException:
-					self.logger.info("URL request retry failed")
-					retry = input("Retry the request again? (Y/N):")	
-					continue
-		return self.response
+	reviews = page.find_all("div", {"class": "review"})
+	for review in reviews :
+		review_dttm_str = review.time['datetime']
+		review_dttm_obj = datetime.strptime(
+						review_dttm_str,
+						DATE_FORMAT) 
+		if(review_dttm_obj > last_ran) :
+			url_tag = review.find(('a', 
+					{'class':'album-link'}))
+			url = BASE_URL + url_tag['href']
+			yield url		
+		else:
+			raise StopIteration	
+
+def _get_response(url):
+	try:
+		response = requests.get(
+			url, headers=headers)
+	except requests.exceptions.RequestException as e:
+		logger.error(e)
+		logger.info("URL request exception caught, retrying")
+		retry = "Y"
+		success = False
+		while( (retry in ['y', 'Y']) and not success):
+			try:
+				response = requests.get(url, 
+					headers=headers)
+				retry = 'n'
+				success = True
+
+			except requests.exceptions.RequestException:
+				logger.info("URL request retry failed")
+				retry = input("Retry the request again? (Y/N):")	
+				continue
+	return response
