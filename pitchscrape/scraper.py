@@ -1,48 +1,54 @@
+import sys
+import logging
+import logging.config
 from itertools import count
 import requests
 from datetime import datetime
+import time
 from bs4 import BeautifulSoup
-from review import Review
-import logging
-import sys
+from core.review import Review
+from core.db_connection import DbConnection
+from core.logging_config import logging_config
 
 headers = {'User-Agent':'Mozilla/5.0'}
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 BASE_URL = 'https://pitchfork.com' 
 
 # Set up logger
-dictConfig(logging_config)
+logging.config.dictConfig(logging_config)
 logger = logging.getLogger()
-
-def scrape():
+def scraper():
 	logger.info("SCRAPE STARTED @ {}".format(datetime.now()))
 	fails = []
+	page_number = 1
 	with DbConnection() as db:
-		scrape = Scraper(db.get_last_update_time())
+		last_ran = db.get_last_update_time()
 		saved_reviews = 0
-		start_page = 1
-		if(len(sys.argv) > 1):
-			start_page = int(sys.argv[1])	
-		for review in scrape.get_unsaved_reviews(start_page = start_page):
+		for review in get_unsaved_reviews(last_ran, start_page = page_number):
 			logger.info('Scraped: ' +  review.album_title + 
 				' by ' + str(review.artists))
 			try:
 				if(db.save_review(review)):
 					saved_reviews = saved_reviews + 1
 			except Exception as e:
-				logger.error('Failed to save : ' + review.album_title)
+				logger.error('Failed to save : ' + 
+					review.album_title)
 				logger.error(e)
-				fails.append((review.album_title, review.artists))
+				fails.append((review.album_title,
+					review.artists))
 				
-			time.sleep(1) # For lessening the load on pitchfork's servers
+			time.sleep(1) # For lessening the load on pitchfork
+
+		db.update_last_run_date()
+
 	logger.info("SCRAPE COMPLETED @ {}: Saved {} reviews with {} errors".format(
 		datetime.now(), saved_reviews, len(fails))) 
 
 	if(len(fails) > 0):
 		logger.info("Fails: " + str(fails))
 
-	
-def get_unsaved_reviews(start_page=1):
+
+def get_unsaved_reviews(last_ran, start_page=1):
 	"""
 	Retrieve the reviews that have been added to pitchfork since 
 	the program was last ran. The function is a generator to allow 
@@ -53,15 +59,14 @@ def get_unsaved_reviews(start_page=1):
 	"""
 	review_fail_log = "Review @ '{}' unable to be created, skipping"
 
-	for group_page in _get_review_group_pages(start_page=start_page):
-		for review_url in _get_review_urls(group_page):
+	for group_page in _get_review_group_pages(last_ran, start_page=start_page):
+		for review_url in _get_review_urls(group_page, last_ran):
 			#self.response = requests.get(
 			#	review_url, headers=headers)
 			response = _get_response(review_url)
 
 			review_html = response.content
-			soup = BeautifulSoup(review_html, 
-						'html.parser')
+			soup = BeautifulSoup(review_html, 'html.parser')
 
 			# Find div for multiple albums if it exists 
 			multiple_albums = soup.find(
@@ -94,7 +99,7 @@ def get_unsaved_reviews(start_page=1):
 							review_url))
 						continue
 
-def _get_review_group_pages(start_page=1):
+def _get_review_group_pages(last_ran, start_page=1):
 	""" 
 	This function goes through the pages starting at 
 	https://pitchfork.com/reviews/albums/?page=1 and iteratively 
@@ -130,7 +135,7 @@ def _get_review_group_pages(start_page=1):
 			else:
 				raise StopIteration	
 
-def _get_review_urls(page):
+def _get_review_urls(page, last_ran):
 	"""
 	Given a soup object of a page containing a list of reviews, 
 	for example the html on: 
@@ -174,3 +179,6 @@ def _get_response(url):
 				retry = input("Retry the request again? (Y/N):")	
 				continue
 	return response
+
+
+scraper()

@@ -1,5 +1,5 @@
 import MySQLdb
-import config
+from . import config
 import datetime
 import warnings
 import logging
@@ -23,7 +23,25 @@ class DbConnection:
 		self.cur.execute('SET character_set_connection=utf8;')
 		
 		self._create_tables()
-	
+
+	def get_review(self, artists, album):
+		if(len(artists) != 0): # Check if review has artists
+			self.sql = """
+				SELECT * FROM review r, artist a
+				WHERE r.id = a.review_id
+				AND r.album_title = %s
+				AND a.artist = %s;
+				"""
+			self.cur.execute(self.sql, [album, artists[0]])
+		else:
+			self.sql = """
+				SELECT * FROM review r 
+				WHERE r.album_title = %s; 
+				"""
+			self.cur.execute(self.sql, [album])
+		row = self.cur.fetchone()
+		print(row)
+
 
 	def save_review(self, review):
 		"""
@@ -91,17 +109,17 @@ class DbConnection:
 	
 	def close(self):
 		""" 
-		Update the last updated date and close the db connection
+		Close the db connection
 		"""
-		
+		self.db.close()
+	
+	def update_last_run_date():
 		self.now = datetime.datetime.now()
 		self.now_formatted = self.now.strftime(TIME_FORMAT)
 		self.sql = "INSERT INTO updated (updated) \
 			VALUES ('%s');" % (self.now_formatted) 
 		self.cur.execute(self.sql)
 		self.db.commit()
-
-		self.db.close()
 
 	def _create_tables(self):
 
