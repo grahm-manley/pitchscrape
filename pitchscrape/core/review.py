@@ -3,21 +3,25 @@ import logging
 
 class Review(object):
 
-	def __init__(self, html, url):
+	def __init__(self, html, url, album_title = None, artists = None, score = None):
 		self.logger = logging.getLogger(__name__)
-
+		
 		self.html = html
 		self.url = url
-		self.soup = BeautifulSoup(self.html, 'html.parser')
-	
-		try:
-			self._set_album_title()
-			self._set_artists()
-			self._set_score()
-		except AttributeError as e:
-			self.logger.error("Attribute Error in review init:")
-			self.logger.error(e)
-			raise AttributeError	
+		self.album_title = album_title
+		self.artists = artists
+		self.score = score
+
+		if(html is not None):
+			self.soup = BeautifulSoup(self.html, 'html.parser')
+			try:
+				self._set_album_title()
+				self._set_artists()
+				self._set_score()
+			except AttributeError as e:
+				self.logger.error("Attribute Error in review init:")
+				self.logger.error(e)
+				raise AttributeError	
 
 	def _set_album_title(self):
 		self.album_title_tag = self.soup.find('h1',
@@ -35,3 +39,6 @@ class Review(object):
 
 	def _set_score(self):
 		self.score = (self.soup.find('span', {'class':'score'})).text
+	
+#	def serialize(self):
+				

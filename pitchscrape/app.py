@@ -1,12 +1,13 @@
 from flask import Flask, jsonify
+from core import db_connection
 
 app = Flask(__name__)
 
 @app.route('/<string:artist>/<string:album>', methods=['GET'])
 def get_review(artist, album):
-	
-	return artist + " " + album 
-
+	with db_connection.DbConnection as db:
+		review = db.get_review([artist], album)
+		
 @app.route('/')
 def index():
 	return "Hi there\n"

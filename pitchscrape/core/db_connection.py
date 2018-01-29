@@ -1,8 +1,9 @@
 import MySQLdb
-from . import config
 import datetime
 import warnings
 import logging
+from . import config
+from . import review
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -27,7 +28,8 @@ class DbConnection:
 	def get_review(self, artists, album):
 		if(len(artists) != 0): # Check if review has artists
 			self.sql = """
-				SELECT * FROM review r, artist a
+				SELECT r.album_title, r.url, r.score 
+				FROM review r, artist a
 				WHERE r.id = a.review_id
 				AND r.album_title = %s
 				AND a.artist = %s;
@@ -35,12 +37,17 @@ class DbConnection:
 			self.cur.execute(self.sql, [album, artists[0]])
 		else:
 			self.sql = """
-				SELECT * FROM review r 
+				SELECT r.album_title, r.url, r.score
+				FROM review r 
 				WHERE r.album_title = %s; 
 				"""
 			self.cur.execute(self.sql, [album])
-		row = self.cur.fetchone()
-		print(row)
+		if(self.cur.rowcount > 0):
+			row = self.cur.fetchone()
+			return review.Review(None, row[1], row[0], artists, row[2]) 
+		else:
+			return None
+						
 
 
 	def save_review(self, review):
