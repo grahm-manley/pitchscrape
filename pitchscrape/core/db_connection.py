@@ -120,7 +120,7 @@ class DbConnection:
 		"""
 		self.db.close()
 	
-	def update_last_run_date():
+	def update_last_run_date(self):
 		self.now = datetime.datetime.now()
 		self.now_formatted = self.now.strftime(TIME_FORMAT)
 		self.sql = "INSERT INTO updated (updated) \

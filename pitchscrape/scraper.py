@@ -2,20 +2,20 @@ import sys
 import logging
 import logging.config
 from itertools import count
-import requests
 from datetime import datetime
 import time
+import requests
 from bs4 import BeautifulSoup
 from core.review import Review
 from core.db_connection import DbConnection
-from core.logging_config import logging_config
+from core import config
 
 headers = {'User-Agent':'Mozilla/5.0'}
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 BASE_URL = 'https://pitchfork.com' 
 
 # Set up logger
-logging.config.dictConfig(logging_config)
+logging.config.dictConfig(config.logging_config)
 logger = logging.getLogger()
 def scraper():
 	logger.info("SCRAPE STARTED @ {}".format(datetime.now()))

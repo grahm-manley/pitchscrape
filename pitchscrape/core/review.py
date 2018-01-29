@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup 
 import logging
+import json
 
 class Review(object):
 
@@ -40,5 +41,11 @@ class Review(object):
 	def _set_score(self):
 		self.score = (self.soup.find('span', {'class':'score'})).text
 	
-#	def serialize(self):
-				
+	def jsonify(self):
+		d = {
+			'album_title': self.album_title,
+			'artists': self.artists,
+			'score': self.score,
+			'url': self.url
+		}
+		return json.dumps(d)
