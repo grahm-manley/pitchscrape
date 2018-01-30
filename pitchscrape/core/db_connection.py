@@ -26,6 +26,10 @@ class DbConnection:
 		self._create_tables()
 
 	def get_review(self, artists, album):
+		""" 
+		Given a list of artists and an album name, return an object
+		of the review if it exists and a null object othherwise
+		"""
 		if(len(artists) != 0): # Check if review has artists
 			self.sql = """
 				SELECT r.album_title, r.url, r.score 
@@ -42,7 +46,7 @@ class DbConnection:
 				WHERE r.album_title = %s; 
 				"""
 			self.cur.execute(self.sql, [album])
-		if(self.cur.rowcount > 0):
+		if(self.cur.rowcount > 0): # If review exists
 			row = self.cur.fetchone()
 			return review.Review(None, row[1], row[0], artists, row[2]) 
 		else:
@@ -103,9 +107,7 @@ class DbConnection:
 		return True
 
 	def get_last_update_time(self):
-		""" 
-		Return the last time the database was updated
-		"""
+		"""Return the last time the database was updated"""
 
 		self.sql = "SELECT updated FROM updated ORDER BY updated DESC;"
 		self.cur.execute(self.sql)
@@ -115,12 +117,12 @@ class DbConnection:
 			return self.cur.fetchone()[0]
 	
 	def close(self):
-		""" 
-		Close the db connection
-		"""
+		"""Close the db connection"""
 		self.db.close()
 	
 	def update_last_run_date(self):
+		"""Add entry for current time to last run database table"""
+
 		self.now = datetime.datetime.now()
 		self.now_formatted = self.now.strftime(TIME_FORMAT)
 		self.sql = "INSERT INTO updated (updated) \
@@ -129,7 +131,7 @@ class DbConnection:
 		self.db.commit()
 
 	def _create_tables(self):
-
+		"""Create tables in database if they do not already exist"""
 		# Hide 'table already exists' warning
 		self.sql = 'SET sql_notes = 0;'
 		self.cur.execute(self.sql)

@@ -5,6 +5,7 @@ import json
 class Review(object):
 
 	def __init__(self, html, url, album_title = None, artists = None, score = None):
+		"""Create review object either from html or from all attributes"""
 		self.logger = logging.getLogger(__name__)
 		
 		self.html = html
@@ -42,6 +43,8 @@ class Review(object):
 		self.score = (self.soup.find('span', {'class':'score'})).text
 	
 	def jsonify(self):
+		"""Return a json representation of this object"""
+
 		d = {
 			'album_title': self.album_title,
 			'artists': self.artists,

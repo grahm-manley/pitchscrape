@@ -5,6 +5,8 @@ app = Flask(__name__)
 
 @app.route('/<string:artist>/<string:album>', methods=['GET'])
 def get_review(artist, album):
+	"""Return the review in json format."""
+
 	with db_connection.DbConnection() as db:
 		review = db.get_review([artist], album)
 		if(review is None):

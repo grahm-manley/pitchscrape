@@ -17,14 +17,20 @@ BASE_URL = 'https://pitchfork.com'
 # Set up logger
 logging.config.dictConfig(config.logging_config)
 logger = logging.getLogger()
-def scraper():
+
+def run_scrape():
+	"""
+	Scrape the pitchfork website for reviews that have been added
+	since the last time the database was updated. Save those reviews
+	in the database and update the last updated table.
+	"""
+
 	logger.info("SCRAPE STARTED @ {}".format(datetime.now()))
-	fails = []
-	page_number = 1
+
 	with DbConnection() as db:
 		last_ran = db.get_last_update_time()
 		saved_reviews = 0
-		for review in get_unsaved_reviews(last_ran, start_page = page_number):
+		for review in get_unsaved_reviews(last_ran):
 			logger.info('Scraped: ' +  review.album_title + 
 				' by ' + str(review.artists))
 			try:
@@ -34,24 +40,18 @@ def scraper():
 				logger.error('Failed to save : ' + 
 					review.album_title)
 				logger.error(e)
-				fails.append((review.album_title,
-					review.artists))
 				
 			time.sleep(1) # For lessening the load on pitchfork
 
 		db.update_last_run_date()
 
-	logger.info("SCRAPE COMPLETED @ {}: Saved {} reviews with {} errors".format(
-		datetime.now(), saved_reviews, len(fails))) 
-
-	if(len(fails) > 0):
-		logger.info("Fails: " + str(fails))
-
+	logger.info("SCRAPE COMPLETED @ {}: Saved {} reviews".format(
+		datetime.now(), saved_reviews)) 
 
 def get_unsaved_reviews(last_ran, start_page=1):
 	"""
-	Retrieve the reviews that have been added to pitchfork since 
-	the program was last ran. The function is a generator to allow 
+	Retrieve the objects of reviews that have been added to pitchfork since 
+	the program was last ran. The function is a generator in order to allow 
 	for separation between the class dealing with the database and
 	the scraper. This allows us to save each review to the db as it
 	is found without keeping it in memory.
@@ -61,24 +61,23 @@ def get_unsaved_reviews(last_ran, start_page=1):
 
 	for group_page in _get_review_group_pages(last_ran, start_page=start_page):
 		for review_url in _get_review_urls(group_page, last_ran):
-			#self.response = requests.get(
-			#	review_url, headers=headers)
+			
+			# Get review html and make BeautifulSoup 
 			response = _get_response(review_url)
-
 			review_html = response.content
 			soup = BeautifulSoup(review_html, 'html.parser')
 
 			# Find div for multiple albums if it exists 
 			multiple_albums = soup.find(
 				'div', 
-				{'class':'multi-tombstone-widget'})	
+				{'class':'multi-tombstone-widget'}
+				)	
 			if(multiple_albums == None): # If one album
 				try:
 					yield Review(review_html, review_url)
 				except AttributeError:
 					logger.error(
-						review_fail_log.format(
-						review_url))
+						review_fail_log.format(review_url))
 					continue
 			else: 
 				# Get individual albums
@@ -86,14 +85,17 @@ def get_unsaved_reviews(last_ran, start_page=1):
 					'div', {
 						'class':
 						'single-album-tombstone'
-						}
-					)
+					}
+				)
+
 				# Make review object from individual tag
 				for review in review_tags:
 					try:
 						yield Review(
 							str(review), 
-							review_url)
+							review_url
+						)
+
 					except AttributeError:
 						logger.error(review_fail_log.format(
 							review_url))
@@ -111,8 +113,6 @@ def _get_review_group_pages(last_ran, start_page=1):
 	for page_number in count(start=start_page):# Loop start_page -> inf
 		logger.info("Page {} being scraped".format(page_number))
 		reviews_url = review_url_base + str(page_number)
-		#self.response = requests.get(self.reviews_url, 
-		#				headers=headers)
 		response = _get_response(reviews_url)
 		page = BeautifulSoup(
 			response.content, 'html.parser')
@@ -159,14 +159,17 @@ def _get_review_urls(page, last_ran):
 			raise StopIteration	
 
 def _get_response(url):
+	"""Attempt to retrieve html from url"""
 	try:
-		response = requests.get(
-			url, headers=headers)
+		response = requests.get(url, headers=headers)
+
 	except requests.exceptions.RequestException as e:
 		logger.error(e)
 		logger.info("URL request exception caught, retrying")
 		retry = "Y"
 		success = False
+		
+		# Allow user to decide if retry is necessary
 		while( (retry in ['y', 'Y']) and not success):
 			try:
 				response = requests.get(url, 
@@ -181,4 +184,4 @@ def _get_response(url):
 	return response
 
 
-scraper()
+run_scrape()
