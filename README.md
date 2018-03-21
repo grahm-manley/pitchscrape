@@ -45,7 +45,7 @@ python3 app.py
 ```
 
 #### To Do list for future development:
-* Better exception handling
+* Better exception handling and system to keep track of which review saves fail
 * A better command line interface possibly using [click](click.pocoo.org/5/)
 * Test cases for components that do not currently have them
 * Better documentation for interfacing with the system
